@@ -1,4 +1,4 @@
-add_library(curl-multi-asio Handle.cpp Detail/Lifetime.cpp)
+add_library(curl-multi-asio Detail/Lifetime.cpp Easy.cpp Multi.cpp)
 
 target_include_directories(curl-multi-asio
 	PUBLIC ../include)

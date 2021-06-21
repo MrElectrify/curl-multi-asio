@@ -1,11 +1,11 @@
-#include <curl-multi-asio/Handle.h>
+#include <curl-multi-asio/Multi.h>
 
-using cma::Handle;
+using cma::Multi;
 
-std::atomic_size_t Handle::s_instanceCount = 0;
-std::unique_ptr<cma::Detail::Lifetime> Handle::s_lifetime;
+std::atomic_size_t Multi::s_instanceCount = 0;
+std::unique_ptr<cma::Detail::Lifetime> Multi::s_lifetime;
 
-Handle::Handle(asio::any_io_executor executor) noexcept
+Multi::Multi(asio::any_io_executor executor) noexcept
 	: m_executor(std::move(executor)), m_nativeHandle(
 		curl_multi_init(), curl_multi_cleanup)
 {
@@ -15,7 +15,7 @@ Handle::Handle(asio::any_io_executor executor) noexcept
 #endif
 }
 
-Handle::~Handle() noexcept
+Multi::~Multi() noexcept
 {
 #ifdef CMA_MANAGE_CURL
 	if (--s_instanceCount == 0)
