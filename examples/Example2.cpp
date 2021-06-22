@@ -28,7 +28,7 @@ int main()
 	easy.SetBuffer(buffer);
 	if (auto res = easy.Perform(); res)
 	{
-		std::cerr << "Error: " << res.ToString() << " (" << res.GetValue() << ")\n";
+		std::cerr << "Error: " << res.ToString() << " (" << res.GetCURLcode() << ")\n";
 		return 1;
 	}
 	std::cout << "Response code: " << easy.GetInfo<long>(CURLINFO::CURLINFO_RESPONSE_CODE).value() <<

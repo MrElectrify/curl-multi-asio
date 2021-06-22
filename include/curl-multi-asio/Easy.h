@@ -124,7 +124,7 @@ namespace cma
 		template<typename T>
 		inline Error SetOption(CURLoption option, T&& value) noexcept
 		{
-			return curl_easy_setopt(GetNativeHandle(), option, std::forward<T>(value));
+			return curl_easy_setopt(GetNativeHandle(), option, static_cast<T&&>(value));
 		}
 		/// @brief Sets the URL to traverse to
 		/// @param url The URL
