@@ -1,5 +1,5 @@
 /*
- *	Example1 shows a simple synchronous GET call
+ *	Example2 shows a simple synchronous GET call
  *	to www.example.com and storing the result in
  *	a std::string. It also shows getting information
  *	such as response code

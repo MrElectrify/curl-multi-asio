@@ -124,6 +124,7 @@ namespace cma
 		template<typename T>
 		inline Error SetOption(CURLoption option, T&& value) noexcept
 		{
+			// weird GCC bug where forward thinks its return value is ignored
 			return curl_easy_setopt(GetNativeHandle(), option, static_cast<T&&>(value));
 		}
 		/// @brief Sets the URL to traverse to

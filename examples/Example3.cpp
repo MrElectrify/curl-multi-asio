@@ -1,5 +1,5 @@
 /*
- *	Example1 shows a simple synchronous GET call
+ *	Example3 shows a simple synchronous GET call
  *	to www.example.com and storing the result in
  *	an ostream. It also shows getting information
  *	such as response code

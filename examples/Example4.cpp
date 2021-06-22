@@ -1,8 +1,6 @@
 /*
- *	Example1 shows a simple synchronous GET call
- *	to www.example.com and storing the result in
- *	an ostream. It also shows getting information
- *	such as response code
+ *	Example4 shows a simple asynchronous GET call
+ *	to www.example.com
  */
  
 #include <curl-multi-asio/Easy.h>
@@ -12,18 +10,36 @@
 
 int main()
 {
+	// the io_context is our choice of executor here. it will
+	// run until it is out of work, or in this case, the request
+	// finishes either with error or success
 	asio::io_context ctx;
-	cma::Easy easy;
+	// this is new here. it's a multi handle, and it is what will
+	// allow us to make asynchronous calls to perform. it takes any
+	// executor (io_context in our case) and executes all of the
+	// request work on that executor
 	cma::Multi multi(ctx);
+	// now we use the easy handle as usual. set all of our regular
+	// options just as if we were making a synchronous call
+	cma::Easy easy;
 	easy.SetURL("http://www.example.com/");
-	// this is where the real magic happens. the request is
-	// performed synchronously, and the result is returned to
-	// us. we handle this one just for completion's sake, and
-	// to show how easy it is to get error information
+	// this is is where the even more real magic happens. this call
+	// will begin the asynchronus operation on the executor, and
+	// perform all of the calls synchronously. we could even have
+	// another easy handle doing stuff in parallel! just set it up
+	// like this one, set your options, and call AsyncPerform on that
+	// one, either before the executor starts working, or while it
+	// is working during a completion handler to start another one.
 	multi.AsyncPerform(easy, [](const asio::error_code& ec, const cma::Error& e)
 		{
-			std::cout << "EASY\n";
+			if (ec)
+				std::cerr << "Error: " << ec.message() << " (" << ec.value() << ")\n";
+			else if (e)
+				std::cerr << "CError: " << e.ToString() << ")\n";
+			else
+				std::cout << "Completed easy perform\n";
 		});
+	// all of the processing happens right here
 	ctx.run();
 	return 0;
 }
