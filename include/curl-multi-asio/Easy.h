@@ -142,9 +142,8 @@ namespace cma
 		/// CURLOPT_WRITEFUNCTION
 		/// @return The numver of bytes taken care of
 		template<IsOstream T>
-		static size_t WriteCb(char* ptr, size_t size, size_t nmemb, void* userdata) noexcept
+		static size_t WriteCb(char* ptr, size_t size, size_t nmemb, std::ostream* buffer) noexcept
 		{
-			auto buffer = reinterpret_cast<std::ostream*>(userdata);
 			buffer->write(ptr, nmemb);
 			return nmemb;
 		}
@@ -153,9 +152,8 @@ namespace cma
 		/// CURLOPT_WRITEFUNCTION
 		/// @return The number of bytes taken care of
 		template<AcceptsCharacters T>
-		static size_t WriteCb(char* ptr, size_t size, size_t nmemb, void* userdata) noexcept
+		static size_t WriteCb(char* ptr, size_t size, size_t nmemb, T* buffer) noexcept
 		{
-			auto buffer = reinterpret_cast<T*>(userdata);
 			const size_t oldSize = buffer->size();
 			// allocate space for the new data
 			buffer->resize(buffer->size() + nmemb);
