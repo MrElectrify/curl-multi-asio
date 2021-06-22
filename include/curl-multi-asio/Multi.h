@@ -45,6 +45,9 @@ namespace cma
 		/// If CMA_MANAGE_CURL is specified when the library is built and
 		/// this is the only instance of Multi, curl_global_cleanup will be called
 		~Multi() = default;
+		// we don't allow copies, because multi handles can't be duplicated.
+		// there's not even a reason to do so, multi handles don't really hold
+		// much of a state themselves besides stuff that shouldn't be duplicated
 		Multi(const Multi&) = delete;
 		Multi& operator=(const Multi&) = delete;
 		/// @brief The other multi instance ends up in an invalid state
@@ -55,6 +58,9 @@ namespace cma
 
 		/// @return The native handle
 		inline CURLM* GetNativeHandle() const noexcept { return m_nativeHandle.get(); }
+
+		/// @return Whether or not the handle is valid
+		inline operator bool() const noexcept { return m_nativeHandle != nullptr; }
 	private:
 		asio::any_io_executor m_executor;
 #ifdef CMA_MANAGE_CURL

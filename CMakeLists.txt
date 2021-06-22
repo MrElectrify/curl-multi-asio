@@ -5,6 +5,9 @@ project(curl-multi-asio)
 # we need curl of course
 find_package(CURL REQUIRED)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 option(CMA_USE_BOOST "Use boost::asio" OFF)
 option(CMA_CURL_OPENSSL "cURL uses OpenSSL and needs OpenSSL to be linked" ON)
 option(CMA_CURL_ARES "cURL uses c-ares and needs c-ares to be linked" OFF)
@@ -28,5 +31,6 @@ else()
 endif()
 
 # the main library is built in src
+add_subdirectory(extern)
 add_subdirectory(src)
 add_subdirectory(examples)
