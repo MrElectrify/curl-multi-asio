@@ -7,6 +7,7 @@
 
 // curl-multi-asio includes
 #include <curl-multi-asio/Common.h>
+#include <curl-multi-asio/Detail/Lifetime.h>
 
 // STL includes
 #include <memory>
@@ -19,16 +20,31 @@ namespace cma
 	class Easy
 	{
 	public:
-		/// @brief Creates an easy CURL handle by curl_easy_init
+		/// @brief Creates an easy CURL handle by curl_easy_init.
 		Easy() noexcept;
 		/// @brief Destroys the easy CURL handle by curl_easy_cleanup
 		~Easy() = default;
+		/// @brief Duplicates the easy handle
+		/// @param other The handle to duplicate from
+		Easy(const Easy& other) noexcept;
+		/// @brief Diplicates the easy handle
+		/// @param other The handle to duplicate from
+		/// @return This handle
+		Easy& operator=(const Easy& other) noexcept;
+		/// @brief Moves the easy handle
+		/// @param other The other easy handle
+		Easy(Easy&& other) = default;
+		/// @brief Moves the easy handle
+		/// @param other The other easy handle
+		/// @return This handle
+		Easy& operator=(Easy&& other) = default;
 
 		/// @return The native handle
 		inline CURL* GetNativeHandle() const noexcept { return m_nativeHandle.get(); }
 	private:
-		friend Multi;
-
+#ifdef CMA_MANAGE_CURL
+		Detail::Lifetime m_lifeTime;
+#endif
 		std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> m_nativeHandle;
 	};
 }

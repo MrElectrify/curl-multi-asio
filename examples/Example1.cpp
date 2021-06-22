@@ -4,6 +4,7 @@
  *	required to make a CURL request.
  */
  
+#include <curl-multi-asio/Easy.h>
 #include <curl-multi-asio/Multi.h>
 
 int main()
@@ -15,5 +16,7 @@ int main()
 	// initialize the handle. this is what will allow us to use
 	// anything in the curl multi facilities
 	cma::Multi multi(ctx);
+	// the easy handle is what configures
+	cma::Easy easy;
 	return 0;
 }

@@ -11,10 +11,12 @@
 
 // STL includes
 #include <atomic>
-#include <memory>
+#include <unordered_set>
 
 namespace cma
 {
+	class Easy;
+
 	/// @brief Multi is a multi handle, which tracks and executes
 	/// all curl_multi calls
 	class Multi
@@ -42,16 +44,24 @@ namespace cma
 		/// @brief Cancels any outstanding operations, and destroys handles.
 		/// If CMA_MANAGE_CURL is specified when the library is built and
 		/// this is the only instance of Multi, curl_global_cleanup will be called
-		~Multi() noexcept;
+		~Multi() = default;
+		Multi(const Multi&) = delete;
+		Multi& operator=(const Multi&) = delete;
+		/// @brief The other multi instance ends up in an invalid state
+		Multi(Multi&& other) = default;
+		/// @brief The other multi instance ends up in an invalid state
+		/// @return This multi handle
+		Multi& operator=(Multi&& other) = default;
+
 		/// @return The native handle
 		inline CURLM* GetNativeHandle() const noexcept { return m_nativeHandle.get(); }
 	private:
 		asio::any_io_executor m_executor;
 #ifdef CMA_MANAGE_CURL
-		static std::atomic_size_t s_instanceCount;
-		static std::unique_ptr<Detail::Lifetime> s_lifetime;
+		Detail::Lifetime s_lifetime;
 #endif
 		std::unique_ptr<CURLM, decltype(&curl_multi_cleanup)> m_nativeHandle;
+		std::unordered_set<CURL*> m_easyNativeHandles;
 	};
 }
 

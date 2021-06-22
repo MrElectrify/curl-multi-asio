@@ -9,9 +9,7 @@
 #include <curl-multi-asio/Common.h>
 
 // STL includes
-#ifdef _DEBUG
 #include <atomic>
-#endif
 
 namespace cma
 {
@@ -22,15 +20,18 @@ namespace cma
 		class Lifetime
 		{
 		public:
-			/// @brief Calls curl_global_init. In debug builds, this
-			/// will throw std::runtime_error if it is not the only instance
-			Lifetime() NOEXCEPT_RELEASE;
-			/// @brief Calls curl_global_cleanup
+			/// @brief Calls curl_global_init if this is the first Lifetime
+			/// instance created
+			Lifetime() noexcept;
+			/// @brief Calls curl_global_cleanup if this is the last Lifetime
+			/// instance remaining
 			~Lifetime() noexcept;
+			Lifetime(const Lifetime&) noexcept;
+			Lifetime& operator=(const Lifetime&) = default;
+			Lifetime(Lifetime&&) noexcept;
+			Lifetime& operator=(Lifetime&&) = default;
 		private:
-#ifdef _DEBUG
 			static std::atomic_size_t s_refCount;
-#endif
 		};
 	}
 }
