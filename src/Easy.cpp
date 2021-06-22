@@ -16,3 +16,10 @@ Easy& Easy::operator=(const Easy& other) noexcept
 	m_nativeHandle.reset(curl_easy_duphandle(other.GetNativeHandle()));
 	return *this;
 }
+
+cma::Error Easy::SetBuffer(NullBuffer nullBuffer) noexcept
+{
+	if (const auto err = SetOption(CURLoption::CURLOPT_WRITEFUNCTION, nullptr); err)
+		return err;
+	return {};
+}

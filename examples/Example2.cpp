@@ -1,12 +1,14 @@
 /*
  *	Example1 shows a simple synchronous GET call
- *	to www.example.com. It shows the bare minimum
- *	required to make a CURL request.
+ *	to www.example.com and storing the result in
+ *	a std::string. It also shows getting information
+ *	such as response code
  */
  
 #include <curl-multi-asio/Easy.h>
 
 #include <iostream>
+#include <string>
 
 int main()
 {
@@ -22,10 +24,14 @@ int main()
 	// performed synchronously, and the result is returned to
 	// us. we handle this one just for completion's sake, and
 	// to show how easy it is to get error information
+	std::string buffer;
+	easy.SetBuffer(buffer);
 	if (auto res = easy.Perform(); res)
 	{
 		std::cerr << "Error: " << res.ToString() << " (" << res.GetValue() << ")\n";
 		return 1;
 	}
+	std::cout << "Response code: " << easy.GetInfo<long>(CURLINFO::CURLINFO_RESPONSE_CODE).value() <<
+		", data: " << buffer << '\n';
 	return 0;
 }

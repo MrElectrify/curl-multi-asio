@@ -15,7 +15,21 @@
 
 // STL includes
 #include <memory>
+#include <ostream>
 #include <utility>
+
+/// @brief This concept detects any type, such as std::string,
+/// or std::vector<char>, that can accept characters as input
+template<typename T>
+concept AcceptsCharacters = requires(T a)
+{
+	{ a.data() } -> std::same_as<char*>;
+	{ a.resize(std::declval<size_t>()) };
+	{ a.size() } -> std::same_as<size_t>;
+};
+/// @brief This concept detects whether or not a type is an ostream.
+template<typename T>
+concept IsOstream = std::is_base_of_v<std::ostream, T>;
 
 namespace cma
 {
@@ -25,12 +39,8 @@ namespace cma
 	class Easy
 	{
 	public:
-		enum class RequestType
-		{
-			GET,
-			POST,
-			PUT,
-		};
+		struct NullBuffer {};
+
 		/// @brief Creates an easy CURL handle by curl_easy_init.
 		Easy() noexcept;
 		/// @brief Destroys the easy CURL handle by curl_easy_cleanup
@@ -70,6 +80,9 @@ namespace cma
 		{
 			return curl_easy_getinfo(GetNativeHandle(), info, &out);
 		}
+		/// @brief Sets the easy handle to not use any buffer
+		/// @return The resulting error
+		Error SetBuffer(NullBuffer) noexcept;
 		/// @brief Gets info from the easy handle
 		/// @tparam T The data type
 		/// @param info The info
@@ -83,6 +96,25 @@ namespace cma
 				return res;
 			// no copy elision here. move it into the expected
 			return std::move(inst);
+		}
+		/// @brief Sets a buffer that either accepts appending strings
+		/// or is an ostream. The buffer must stay in scope until the
+		/// call to Perform, otherwise the call will result in undefied behavior
+		/// @param buffer The buffer
+		/// @return The resulting error
+		template<typename T>
+		Error SetBuffer(T& buffer) noexcept requires
+			AcceptsCharacters<T> || IsOstream<T>
+		{
+			// set the buffer first in case it fails, to avoid potential
+			// calls with a null buffer
+			if (const auto err = SetOption(CURLoption::CURLOPT_WRITEDATA,
+				&buffer); err)
+				return err;
+			if (const auto err = SetOption(CURLoption::CURLOPT_WRITEFUNCTION,
+				WriteCb<T>); err)
+				return err;
+			return {};
 		}
 		/// @brief Sets an option on the easy handle
 		/// @tparam T The value type
@@ -105,6 +137,32 @@ namespace cma
 		/// @return Whether or not the handle is valid
 		inline operator bool() const noexcept { return m_nativeHandle != nullptr; }
 	private:
+		/// @brief The write callback for ostreams. For a
+		/// description of each argument, check cURL docs for
+		/// CURLOPT_WRITEFUNCTION
+		/// @return The numver of bytes taken care of
+		template<IsOstream T>
+		static size_t WriteCb(char* ptr, size_t size, size_t nmemb, void* userdata) noexcept
+		{
+			auto buffer = reinterpret_cast<std::ostream*>(userdata);
+			buffer->write(ptr, nmemb);
+			return nmemb;
+		}
+		/// @brief The write callback for string buffers. For a 
+		/// description of each argument, check cURL docs for
+		/// CURLOPT_WRITEFUNCTION
+		/// @return The number of bytes taken care of
+		template<AcceptsCharacters T>
+		static size_t WriteCb(char* ptr, size_t size, size_t nmemb, void* userdata) noexcept
+		{
+			auto buffer = reinterpret_cast<T*>(userdata);
+			const size_t oldSize = buffer->size();
+			// allocate space for the new data
+			buffer->resize(buffer->size() + nmemb);
+			std::copy(ptr, ptr + nmemb, &buffer->data()[oldSize]);
+			return nmemb;
+		}
+
 #ifdef CMA_MANAGE_CURL
 		Detail::Lifetime m_lifeTime;
 #endif
