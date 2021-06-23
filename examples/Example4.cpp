@@ -1,4 +1,4 @@
-/*
+a/*
  *	Example4 shows a simple asynchronous GET call
  *	to www.example.com
  */
@@ -25,7 +25,7 @@ int main()
 	easy.SetURL("http://www.example.com/");
 	// this is is where the even more real magic happens. this call
 	// will begin the asynchronus operation on the executor, and
-	// perform all of the calls synchronously. we could even have
+	// perform all of the calls asynchronously. we could even have
 	// another easy handle doing stuff in parallel! just set it up
 	// like this one, set your options, and call AsyncPerform on that
 	// one, either before the executor starts working, or while it
