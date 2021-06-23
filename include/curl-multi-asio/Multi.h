@@ -16,6 +16,12 @@
 #include <unordered_map>
 #include <utility>
 
+template<typename T>
+concept HasExecutor = requires(T a)
+{
+	{ a.get_executor() };
+};
+
 namespace cma
 {
 	/// @brief Multi is a multi handle, which tracks and executes
@@ -98,8 +104,8 @@ namespace cma
 		/// is provided in cma::Detail::Lifetime.
 		/// @tparam ExecutionContext The execution context type
 		/// @param ctx The execution context
-		template<typename ExecutionContext>
-		Multi(ExecutionContext& ctx) noexcept
+		template<HasExecutor ExecutionContext>
+		explicit Multi(ExecutionContext& ctx) noexcept
 			: Multi(ctx.get_executor()) {}
 		/// @brief Cancels any outstanding operations, and destroys handles.
 		/// If CMA_MANAGE_CURL is specified when the library is built and
@@ -155,7 +161,7 @@ namespace cma
 			};
 			return asio::async_initiate<CompletionToken, 
 				void(asio::error_code, Error)>(
-				initiation, token, easy);
+				initiation, token, std::ref(easy));
 		}
 		/// @brief Cancels all outstanding asynchronous operations,
 		/// and calls handlers with asio::error::operation_aborted
