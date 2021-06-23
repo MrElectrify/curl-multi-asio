@@ -1,4 +1,4 @@
-a/*
+/*
  *	Example4 shows a simple asynchronous GET call
  *	to www.example.com
  */
