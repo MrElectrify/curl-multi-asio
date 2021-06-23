@@ -44,7 +44,7 @@ int main()
 			if (ec)
 				std::cerr << "Error: " << ec.message() << " (" << ec.value() << ")\n";
 			else if (e)
-				std::cerr << "CError: " << e.ToString() << ")\n";
+				std::cerr << "CError: " << e.ToString() << '\n';
 			else
 				std::cout << "Completed easy perform for example with " << exampleBuf.size() << " bytes\n";
 		});
@@ -53,7 +53,7 @@ int main()
 			if (ec)
 				std::cerr << "Error: " << ec.message() << " (" << ec.value() << ")\n";
 			else if (e)
-				std::cerr << "CError: " << e.ToString() << ")\n";
+				std::cerr << "CError: " << e.ToString() << '\n';
 			else
 				std::cout << "Completed easy perform for google with " << googleBuf.size() << " bytes\n";
 		});

@@ -35,7 +35,7 @@ int main()
 			if (ec)
 				std::cerr << "Error: " << ec.message() << " (" << ec.value() << ")\n";
 			else if (e)
-				std::cerr << "CError: " << e.ToString() << ")\n";
+				std::cerr << "CError: " << e.ToString() << '\n';
 			else
 				std::cout << "Completed easy perform\n";
 		});
