@@ -105,7 +105,7 @@ namespace cma
 		/// @tparam ExecutionContext The execution context type
 		/// @param ctx The execution context
 		template<HasExecutor ExecutionContext>
-		explicit Multi(ExecutionContext& ctx) noexcept
+		explicit Multi(ExecutionContext& ctx)
 			: Multi(ctx.get_executor()) {}
 		/// @brief Cancels any outstanding operations, and destroys handles.
 		/// If CMA_MANAGE_CURL is specified when the library is built and
@@ -137,7 +137,7 @@ namespace cma
 		/// @param token The completion token
 		/// @return DEDUCED
 		template<typename CompletionToken>
-		auto AsyncPerform(Easy& easy, CompletionToken&& token) noexcept
+		auto AsyncPerform(Easy& easy, CompletionToken&& token)
 		{
 			auto initiation = [this](auto&& handler, Easy& easy)
 			{
