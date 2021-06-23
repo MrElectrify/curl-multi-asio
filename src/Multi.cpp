@@ -59,24 +59,37 @@ curl_socket_t Multi::OpenSocketCb(Multi* userp, curlsocktype purpose,
 }
 
 int Multi::SocketCallback(CURL* easy, curl_socket_t s, int what,
-	Multi* userp, void* socketp) noexcept
+	Multi* userp, int* socketp) noexcept
 {
-	// if it is remove, don't worry about it right now.
+	// delete our last action
 	if (what == CURL_POLL_REMOVE)
+	{
+		delete socketp;
 		return 0;
+	}
+	if (socketp == nullptr)
+	{
+		// allocate our last action
+		socketp = new int(0);
+		curl_multi_assign(userp->GetNativeHandle(), s, socketp);
+	}
 	// find the socket
 	auto socketIt = userp->m_easySocketMap.find(s);
 	if (socketIt == userp->m_easySocketMap.end())
 		return 0;
-	// do what cURL wants
-	if (what == CURL_POLL_IN || what == CURL_POLL_INOUT)
+	int last = *socketp;
+	*socketp = what;
+	// do what cURL wants, only if it changed
+	if ((what == CURL_POLL_IN || what == CURL_POLL_INOUT) &&
+		(last != CURL_POLL_IN && last != CURL_POLL_INOUT))
 		socketIt->second.async_read_some(asio::null_buffers(),
 			asio::bind_executor(userp->m_strand, std::bind(&Multi::EventCallback,
-				userp, std::placeholders::_1, std::placeholders::_2, s, what)));
-	if (what == CURL_POLL_OUT || what == CURL_POLL_INOUT)
+				userp, std::placeholders::_1, s, CURL_POLL_IN, socketp)));
+	if ((what == CURL_POLL_OUT || what == CURL_POLL_INOUT) &&
+		(last != CURL_POLL_OUT && last != CURL_POLL_INOUT))
 		socketIt->second.async_write_some(asio::null_buffers(),
 			asio::bind_executor(userp->m_strand, std::bind(&Multi::EventCallback,
-				userp, std::placeholders::_1, std::placeholders::_2, s, what)));
+				userp, std::placeholders::_1, s, CURL_POLL_OUT, socketp)));
 	return 0;
 }
 
@@ -107,7 +120,6 @@ int Multi::TimerCallback(CURLM* multi, long timeout_ms, Multi* userp) noexcept
 				}
 				// we may have completed some transfers here. check
 				userp->CheckTransfers();
-
 			}));
 	}
 	return 0;
@@ -130,13 +142,19 @@ void Multi::CheckTransfers() noexcept
 	}
 }
 
-void Multi::EventCallback(const asio::error_code& ec, size_t, curl_socket_t s,
-	int what) noexcept
+void Multi::EventCallback(const asio::error_code& ec, curl_socket_t s,
+	int what, int* last) noexcept
 {
-	if (ec)
+	// make sure it's a socket that hasn't bene closed
+	if (m_easySocketMap.find(s) == m_easySocketMap.end())
+		return;
+	// if the action changed, let curl handle it
+	if (what != *last && *last != CURL_POLL_INOUT)
 		return;
 	int still_running = 0;
 	asio::error_code ignored;
+	if (ec)
+		what = CURL_CSELECT_ERR;
 	if (auto err = curl_multi_socket_action(GetNativeHandle(), s,
 		what, &still_running); err != CURLMcode::CURLM_OK)
 	{
@@ -145,4 +163,22 @@ void Multi::EventCallback(const asio::error_code& ec, size_t, curl_socket_t s,
 	}
 	// check for completed transfers
 	CheckTransfers();
+	// we have no reason to continue if there are none running
+	if (still_running == 0)
+		m_timer.cancel(ignored);
+	// if the socket still exists and the mission remainds
+	// unchanged, keep it up
+	auto socketIt = m_easySocketMap.find(s);	
+	if (!ec && socketIt != m_easySocketMap.end() &&
+		(what == *last || *last == CURL_POLL_INOUT))
+	{
+		if (what == CURL_POLL_IN)
+			socketIt->second.async_read_some(asio::null_buffers(),
+				asio::bind_executor(m_strand, std::bind(&Multi::EventCallback,
+					this, std::placeholders::_1, s, what, last)));
+		else if (what == CURL_POLL_OUT)
+			socketIt->second.async_write_some(asio::null_buffers(),
+				asio::bind_executor(m_strand, std::bind(&Multi::EventCallback,
+					this, std::placeholders::_1, s, what, last)));
+	}
 }

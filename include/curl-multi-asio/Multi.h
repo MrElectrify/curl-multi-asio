@@ -192,7 +192,7 @@ namespace cma
 		/// check cURL documentation for CURLMOPT_SOCKETFUNCTION
 		/// @return 0 on success
 		static int SocketCallback(CURL* easy, curl_socket_t s, int what,
-			Multi* userp, void* socketp) noexcept;
+			Multi* userp, int* socketp) noexcept;
 		/// @brief The timer callback called by cURL when a timer should be set.
 		/// For a description on arguments, check cURL documentation for
 		/// CURLMOPT_TIMERFUNCTION
@@ -206,8 +206,8 @@ namespace cma
 		/// @param ec The error code
 		/// @param s The socket
 		/// @param what The type of event
-		void EventCallback(const asio::error_code& ec, size_t, curl_socket_t s,
-			int what) noexcept;
+		void EventCallback(const asio::error_code& ec, curl_socket_t s,
+			int what, int* last) noexcept;
 		/// @brief Untracks and frees a handler
 		/// @param handler The handler to untrack
 		inline void FreeHandler(PerformHandlerBase* handler) noexcept
