@@ -20,13 +20,40 @@ size_t Multi::Cancel(asio::error_code& ec, CURLMcode error) noexcept
 {
 	// if there are no operations, there is no need for a timer
 	m_timer.cancel(ec);
-	// call each handler with asio::error::operation_aborted
-	const size_t numHandlers = m_easyHandlerMap.size();
-	for (const auto& handler : m_easyHandlerMap)
-		handler.second->Complete(asio::error::operation_aborted, error);
-	// clear the map and free handler data
-	m_easyHandlerMap.clear();
-	return numHandlers;
+	asio::post(m_executor, asio::bind_executor(m_strand,
+		[this, error] 
+		{
+			// call each handler with asio::error::operation_aborted
+			for (const auto& handler : m_easyHandlerMap)
+				handler.second->Complete(asio::error::operation_aborted, error);
+			// clear the map and free handler data
+			m_easyHandlerMap.clear();
+		}));
+	return m_easyHandlerMap.size();
+}
+
+bool Multi::Cancel(const Easy& easy, CURLMcode error) noexcept
+{
+	// ensure that the easy handle is already being handled
+	auto handlerIt = m_easyHandlerMap.find(easy.GetNativeHandle());
+	if (handlerIt == m_easyHandlerMap.end())
+		return false;
+	// post completion under the strand
+	asio::post(m_executor, asio::bind_executor(m_strand,
+		[this, handlerIt, error]()
+		{
+			// call the handler now
+			handlerIt->second->Complete(asio::error::operation_aborted, error);
+			// delete the handler
+			m_easyHandlerMap.erase(handlerIt);
+			// if there are no more operations, there is no need for a timer
+			if (m_easyHandlerMap.empty() == true)
+			{
+				asio::error_code ignored;
+				m_timer.cancel(ignored);
+			}
+		}));
+	return true;
 }
 
 int Multi::CloseSocketCb(Multi* userp, curl_socket_t item) noexcept
