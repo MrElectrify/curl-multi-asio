@@ -42,8 +42,7 @@ target in make/ninja/whatever flavor will generate docs for every bit of code.
 
 ## Thread Safety
 Although I haven't extensively tested this with multiple threads, the design should allow operation to be thread safe with a single exception.
-Calls to `cma::Multi::AsyncPerform` must not be done concurrently, and should be wrapped in an `asio::strand`, either implicit or explicit.
-Otherwise, `curl-multi-asio` can have many threads concurrently processing work in the executor. General `asio` guarantees should apply. Just
+`curl-multi-asio` can have many threads concurrently processing work in the executor. General `asio` guarantees should apply. Just
 use your brain and don't do obvious don'ts like adding an easy handle while it's already processing, or for some reason change some of the cURL
 callbacks like `CURLMOPT_SOCKETCALLBACK`. `cma::Multi` is not singleton, it can be instantiated many times in different places with different
 executors.
