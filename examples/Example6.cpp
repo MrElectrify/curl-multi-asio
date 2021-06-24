@@ -24,11 +24,10 @@ int main()
 	cma::Easy easy;
 	easy.SetURL("http://www.example.com/");
 	// this is is where the even more real magic happens. this call
-	// will begin the asynchronus operation on the executor, and
-	// perform all of the calls asynchronously. we could even have
-	// another easy handle doing stuff in parallel! just set it up
-	// like this one, set your options, and call AsyncPerform on that
-	// one, either before the executor starts working, or while it
+	// will queue the asynchronus operation on the executor. we could
+	// even have another easy handle doing stuff in parallel! just set
+	// it up like this one, set your options, and call AsyncPerform on 
+	// that one, either before the executor starts working, or while it
 	// is working during a completion handler to start another one.
 	auto error = multi.AsyncPerform(easy, asio::use_future);
 	// all of the processing happens right here

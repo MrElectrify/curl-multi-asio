@@ -33,11 +33,10 @@ int main()
 	std::string googleBuf;
 	google.SetBuffer(googleBuf);
 	// this is is where the even more real magic happens. this call
-	// will begin the asynchronus operation on the executor, and
-	// perform all of the calls asynchronously. we could even have
-	// another easy handle doing stuff in parallel! just set it up
-	// like this one, set your options, and call AsyncPerform on that
-	// one, either before the executor starts working, or while it
+	// will queue the asynchronus operation on the executor. we could
+	// even have another easy handle doing stuff in parallel! just set
+	// it up like this one, set your options, and call AsyncPerform on 
+	// that one, either before the executor starts working, or while it
 	// is working during a completion handler to start another one.
 	multi.AsyncPerform(example, [&exampleBuf](const asio::error_code& ec, const cma::Error& e)
 		{
