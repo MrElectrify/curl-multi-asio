@@ -71,6 +71,17 @@ namespace cma
 			return curl_easy_perform(GetNativeHandle());
 		}
 
+		/// @brief Adds a header to the request
+		/// @param header The header string
+		/// @return The success of the operation
+		bool AddHeader(std::string_view header) noexcept;
+		/// @brief Adds a header to the request
+		/// @param header The header key and value
+		/// @return The success of the operation
+		bool AddHeader(std::pair<std::string_view, std::string_view> header) noexcept;
+		/// @brief Clears the custom headers from the cURL request
+		inline void ClearHeaders() noexcept { m_headerList.reset(); }
+
 		/// @brief Gets info from the easy handle
 		/// @tparam T The data type
 		/// @param info The info
@@ -175,6 +186,7 @@ namespace cma
 		Detail::Lifetime m_lifeTime;
 #endif
 		std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> m_nativeHandle;
+		std::unique_ptr<curl_slist, decltype(&curl_slist_free_all)> m_headerList;
 	};
 }
 

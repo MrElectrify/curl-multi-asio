@@ -3,11 +3,19 @@
 using cma::Easy;
 
 Easy::Easy() noexcept : 
-	m_nativeHandle(curl_easy_init(), curl_easy_cleanup) {}
+	m_nativeHandle(curl_easy_init(), curl_easy_cleanup),
+	m_headerList(nullptr, curl_slist_free_all) {}
 
 // just duplicate the raw handle
 Easy::Easy(const Easy& other) noexcept :
-	m_nativeHandle(curl_easy_duphandle(other.GetNativeHandle()), curl_easy_cleanup) {}
+	m_nativeHandle(curl_easy_duphandle(other.GetNativeHandle()), curl_easy_cleanup),
+	m_headerList(nullptr, curl_slist_free_all) 
+{
+	// add each header manually
+	for (auto node = other.m_headerList.get(); node != nullptr;
+		node = node->next)
+		AddHeader(node->data);
+}
 
 Easy& Easy::operator=(const Easy& other) noexcept
 {
@@ -17,10 +25,31 @@ Easy& Easy::operator=(const Easy& other) noexcept
 	return *this;
 }
 
+bool Easy::AddHeader(std::string_view header) noexcept
+{
+	// add the header to the list
+	const auto result = curl_slist_append(m_headerList.get(), header.data());
+	if (result == nullptr)
+		return false;
+	// release the unique_ptr so we don't destroy it
+	m_headerList.release();
+	m_headerList.reset(result);
+	return true;
+}
+
+bool Easy::AddHeader(std::pair<std::string_view, std::string_view> header) noexcept
+{
+	std::string headerStr(header.first.data(), header.first.size());
+	headerStr += ": ";
+	headerStr += header.second;
+	return AddHeader(headerStr);
+}
+
 cma::error_code Easy::SetBuffer(DefaultBuffer) noexcept
 {
 	return SetOption(CURLoption::CURLOPT_WRITEFUNCTION, nullptr);
 }
+
 cma::error_code Easy::SetBuffer(NullBuffer) noexcept
 {
 	static NullBuffer s_nb;
