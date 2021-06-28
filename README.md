@@ -29,16 +29,15 @@ Easy handles can be used on their own to perform synchronous requests with the `
 They allow asynchronous performance of easy handles by using the `AsyncPerform` function, which accepts a set-up easy handle with all of the
 desired options, as well as a completion token. Tokens such as callbacks and futures are supported, however coroutine support is not quite
 ready. I'm not entirely sure why to be honest, I don't know enough about coroutines, but something leads me to believe it is due to the completion
-token signature also being `void(asio::error_code, cma::Error)`, which is a nice wrapper around both `CURLcode` and `CURLMcode`.
-
-Speaking of the completion token signature for `cma::Multi`'s `AsyncPerform` function, an `asio::error_code` is passed as required, and only
-has an error in the event of `asio::error::operation_aborted`. It is possible to cancel all asynchronous operations just as with many other
-`asio` structures by simply calling `Cancel`. This will immediately call handlers with `asio::error::operation_aborted` and cease any operations.
-Otherwise, errors will usually be stored in `cma::Error`.
+token signature also being `void(error_code)`, which is a nice wrapper around both `CURLcode` and `CURLMcode`.
 
 Many examples are provided in `examples/` which show synchronous usage (whose building can be disabled with the CMake option `CMA_BUILD_EXAMPLES`), 
 asynchronous usage with different types of buffers, and asynchronous futures. Everything is extensively commented in doxygen format, and the `docs`
 target in make/ninja/whatever flavor will generate docs for every bit of code.
+
+## Errors
+Error facilities are provided inside of the usual `asio::error_code` or `boost::system::error_code`, depending on your flavor. If there is a
+cURL error, or `asio::error::operation_aborted`, it will be stored in the `error_code`.
 
 ## Thread Safety
 Although I haven't extensively tested this with multiple threads, the design should allow operation to be thread safe with a single exception.
