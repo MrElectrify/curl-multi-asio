@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.15)
 
 project(curl-multi-asio)
 
+# allow it to search for FindCARES
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 # we need curl of course
 find_package(CURL REQUIRED)
 
