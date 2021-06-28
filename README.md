@@ -47,7 +47,6 @@ callbacks like `CURLMOPT_SOCKETCALLBACK`. `cma::Multi` is not singleton, it can 
 executors.
 
 ## Notes
-I wrote this all in less than a day so it's not gonna be perfect. Don't come with pitchforks when you find weird bugs, do a little bit of debugging,
-or simply open up an issue and help better the project for everybody. No such project exists with proper modern `asio` initiation in my small amount
-of looking, so hopefully we can make this useful for everybody. Though in my limited testing everything seems to work just fine. A lot of the code is
-based on the `libev` and `boost::asio` examples included with `cURL`, but much more C++ than C.
+This was written with the standalone `asio` by `chriskohlhoff`, and has not been tested with `boost::asio`, but generally it should be ready to
+drop in with `boost`, or within 5 minutes of fixing class names. I also wrote the bulk of the code in less than a day so don't come with pitchforks
+when your server crashes and burns. Instead, please try and figure out what's causing your issues and make an issue or a PR.
