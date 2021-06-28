@@ -24,11 +24,13 @@ if (NOT TARGET asio)
 endif()
 
 # we want documentation generated
-find_package(Doxygen)
-if (DOXYGEN_FOUND)
-	add_subdirectory(docs)
-else()
-	message(STATUS "Doxygen not found, skipping docs")
+if (${CMAKE_SOURCE_DIR} STREQUAL ${PROJECT_SOURCE_DIR})
+	find_package(Doxygen)
+	if (DOXYGEN_FOUND)
+		add_subdirectory(docs)
+	else()
+		message(STATUS "Doxygen not found, skipping docs")
+	endif()
 endif()
 
 # the main library is built in src
