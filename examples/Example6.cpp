@@ -23,6 +23,7 @@ int main()
 	// options just as if we were making a synchronous call
 	cma::Easy easy;
 	easy.SetURL("http://www.example.com/");
+	easy.SetBuffer(cma::Easy::NullBuffer{});
 	// this is is where the even more real magic happens. this call
 	// will queue the asynchronus operation on the executor. we could
 	// even have another easy handle doing stuff in parallel! just set
@@ -33,10 +34,14 @@ int main()
 	// all of the processing happens right here
 	ctx.run();
 	// here we get the result from the future
-	auto e = error.get();
-	if (e)
+	try
 	{
-		std::cerr << "Error: " << e.ToString() << '\n';
+		// std::future::get throws a system_error
+		error.get();
+	}
+	catch (const std::system_error& e)
+	{
+		std::cerr << "Error: " << e.what() << " (" << e.code() << ")\n";
 		return 1;
 	}
 	std::cout << "Success!\n";

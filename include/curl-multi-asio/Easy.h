@@ -39,6 +39,7 @@ namespace cma
 	class Easy
 	{
 	public:
+		struct DefaultBuffer {};
 		struct NullBuffer {};
 
 		/// @brief Creates an easy CURL handle by curl_easy_init.
@@ -65,7 +66,7 @@ namespace cma
 
 		/// @brief Perform the request
 		/// @return The resulting code
-		inline Error Perform() noexcept
+		inline error_code Perform() noexcept
 		{
 			return curl_easy_perform(GetNativeHandle());
 		}
@@ -76,24 +77,26 @@ namespace cma
 		/// @param out The output instance
 		/// @return The resulting error
 		template<typename T>
-		inline Error GetInfo(CURLINFO info, T& out) noexcept
+		inline error_code GetInfo(CURLINFO info, T& out) noexcept
 		{
 			return curl_easy_getinfo(GetNativeHandle(), info, &out);
 		}
+		/// @brief Sets the easy handle to not use the default buffer
+		/// @return The resulting error
+		error_code SetBuffer(DefaultBuffer) noexcept;
 		/// @brief Sets the easy handle to not use any buffer
 		/// @return The resulting error
-		Error SetBuffer(NullBuffer) noexcept;
+		error_code SetBuffer(NullBuffer) noexcept;
 		/// @brief Gets info from the easy handle
 		/// @tparam T The data type
 		/// @param info The info
 		/// @return An instance to the type, or the error
 		template<typename T>
-		inline tl::expected<T, Error> GetInfo(CURLINFO info) noexcept
+		inline tl::expected<T, error_code> GetInfo(CURLINFO info) noexcept
 		{
 			T inst;
-			if (auto res = GetInfo(info, inst); 
-				res != CURLcode::CURLE_OK)
-				return res;
+			if (auto res = GetInfo(info, inst); res)
+				return tl::make_unexpected(res);
 			// no copy elision here. move it into the expected
 			return std::move(inst);
 		}
@@ -103,7 +106,7 @@ namespace cma
 		/// @param buffer The buffer
 		/// @return The resulting error
 		template<typename T>
-		Error SetBuffer(T& buffer) noexcept requires
+		error_code SetBuffer(T& buffer) noexcept requires
 			AcceptsCharacters<T> || IsOstream<T>
 		{
 			// set the buffer first in case it fails, to avoid potential
@@ -111,10 +114,7 @@ namespace cma
 			if (const auto err = SetOption(CURLoption::CURLOPT_WRITEDATA,
 				&buffer); err)
 				return err;
-			if (const auto err = SetOption(CURLoption::CURLOPT_WRITEFUNCTION,
-				WriteCb<T>); err)
-				return err;
-			return {};
+			return SetOption(CURLoption::CURLOPT_WRITEFUNCTION, WriteCb<T>);
 		}
 		/// @brief Sets an option on the easy handle
 		/// @tparam T The value type
@@ -122,7 +122,7 @@ namespace cma
 		/// @param value The value
 		/// @return The resulting error
 		template<typename T>
-		inline Error SetOption(CURLoption option, T&& value) noexcept
+		inline error_code SetOption(CURLoption option, T&& value) noexcept
 		{
 			// weird GCC bug where forward thinks its return value is ignored
 			return curl_easy_setopt(GetNativeHandle(), option, static_cast<T&&>(value));
@@ -130,7 +130,7 @@ namespace cma
 		/// @brief Sets the URL to traverse to
 		/// @param url The URL
 		/// @return The resulting error
-		inline Error SetURL(std::string_view url) noexcept
+		inline error_code SetURL(std::string_view url) noexcept
 		{
 			return SetOption(CURLoption::CURLOPT_URL, url.data());
 		}
@@ -159,6 +159,15 @@ namespace cma
 			// allocate space for the new data
 			buffer->resize(buffer->size() + nmemb);
 			std::copy(ptr, ptr + nmemb, &buffer->data()[oldSize]);
+			return nmemb;
+		}
+		/// @brief The write callback for null buffers. For a 
+		/// description of each argument, check cURL docs for
+		/// CURLOPT_WRITEFUNCTION
+		/// @return The number of bytes taken care of
+		template<typename T>
+		static size_t WriteCb(char* ptr, size_t size, size_t nmemb, T* buffer) requires(std::is_same_v<T, NullBuffer>)
+		{
 			return nmemb;
 		}
 

@@ -17,9 +17,15 @@ Easy& Easy::operator=(const Easy& other) noexcept
 	return *this;
 }
 
-cma::Error Easy::SetBuffer(NullBuffer nullBuffer) noexcept
+cma::error_code Easy::SetBuffer(DefaultBuffer) noexcept
 {
-	if (const auto err = SetOption(CURLoption::CURLOPT_WRITEFUNCTION, nullptr); err)
-		return err;
-	return {};
+	return SetOption(CURLoption::CURLOPT_WRITEFUNCTION, nullptr);
+}
+cma::error_code Easy::SetBuffer(NullBuffer) noexcept
+{
+	static NullBuffer s_nb;
+	if (auto res = SetOption(CURLoption::CURLOPT_WRITEFUNCTION,
+		Easy::WriteCb<NullBuffer>); res)
+		return res;
+	return SetOption(CURLoption::CURLOPT_WRITEDATA, &s_nb);
 }

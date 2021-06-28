@@ -38,21 +38,17 @@ int main()
 	// it up like this one, set your options, and call AsyncPerform on 
 	// that one, either before the executor starts working, or while it
 	// is working during a completion handler to start another one.
-	multi.AsyncPerform(example, [&exampleBuf](const asio::error_code& ec, const cma::Error& e)
+	multi.AsyncPerform(example, [&exampleBuf](const asio::error_code& ec)
 		{
 			if (ec)
-				std::cerr << "Error: " << ec.message() << " (" << ec.value() << ")\n";
-			else if (e)
-				std::cerr << "CError: " << e.ToString() << '\n';
+				std::cerr << "Error: " << ec.message() << " (" << ec << ")\n";
 			else
 				std::cout << "Completed easy perform for example with " << exampleBuf.size() << " bytes\n";
 		});
-	multi.AsyncPerform(google, [&googleBuf](const asio::error_code& ec, const cma::Error& e)
+	multi.AsyncPerform(google, [&googleBuf](const asio::error_code& ec)
 		{
 			if (ec)
-				std::cerr << "Error: " << ec.message() << " (" << ec.value() << ")\n";
-			else if (e)
-				std::cerr << "CError: " << e.ToString() << '\n';
+				std::cerr << "Error: " << ec.message() << " (" << ec << ")\n";
 			else
 				std::cout << "Completed easy perform for google with " << googleBuf.size() << " bytes\n";
 		});

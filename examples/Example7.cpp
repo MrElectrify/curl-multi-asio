@@ -24,18 +24,17 @@ int main()
 	// options just as if we were making a synchronous call
 	cma::Easy easy;
 	easy.SetURL("http://www.example.com/");
+	easy.SetBuffer(cma::Easy::NullBuffer{});
 	// this is is where the even more real magic happens. this call
 	// will queue the asynchronus operation on the executor. we could
 	// even have another easy handle doing stuff in parallel! just set
 	// it up like this one, set your options, and call AsyncPerform on 
 	// that one, either before the executor starts working, or while it
 	// is working during a completion handler to start another one.
-	multi.AsyncPerform(easy, [&easy, &multi](const asio::error_code& ec, const cma::Error& e)
+	multi.AsyncPerform(easy, [&easy, &multi](const asio::error_code& ec)
 		{
 			if (ec)
-				std::cerr << "Error: " << ec.message() << " (" << ec.value() << ")\n";
-			else if (e)
-				std::cerr << "CError: " << e.ToString() << '\n';
+				std::cerr << "Error: " << ec.message() << " (" << ec << ")\n";
 			else
 			{
 				std::cout << "Completed easy perform\n";
@@ -43,16 +42,12 @@ int main()
 				// from multi, so we can comfortably immediately initiate another
 				// transfer.
 				easy.SetURL("http://www.google.com/");
-				multi.AsyncPerform(easy, [](const asio::error_code& ec, const cma::Error& e)
+				multi.AsyncPerform(easy, [](const asio::error_code& ec)
 					{
 						if (ec)
-							std::cerr << "Error: " << ec.message() << " (" << ec.value() << ")\n";
-						else if (e)
-							std::cerr << "CError: " << e.ToString() << '\n';
+							std::cerr << "Error: " << ec.message() << " (" << ec << ")\n";
 						else
-						{
 							std::cout << "Completed easy perform\n";
-						}
 					});
 			}
 		});

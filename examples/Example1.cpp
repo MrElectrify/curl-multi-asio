@@ -24,7 +24,7 @@ int main()
 	// to show how easy it is to get error information
 	if (auto res = easy.Perform(); res)
 	{
-		std::cerr << "Error: " << res.ToString() << " (" << res.GetCURLcode() << ")\n";
+		std::cerr << "Error: " << res.message() << " (" << res << ")\n";
 		return 1;
 	}
 	return 0;

@@ -43,7 +43,7 @@ namespace cma
 			/// set handled status
 			/// @param ec The error code
 			/// @param e The curl error
-			virtual void Complete(asio::error_code ec, Error e) noexcept = 0;
+			virtual void Complete(error_code ec) noexcept = 0;
 
 			/// @return The underlying easy handle
 			inline CURL* GetEasyHandle() const noexcept { return m_easyHandle; }
@@ -69,17 +69,16 @@ namespace cma
 			{
 				// abort if we haven't been handled
 				if (Handled() == false)
-					Complete(asio::error::make_error_code(
-						asio::error::operation_aborted), Error{});
+					Complete(asio::error::operation_aborted);
 			}
 
-			void Complete(asio::error_code ec, Error e) noexcept
+			void Complete(asio::error_code ec) noexcept
 			{
 				if (Handled() == true)
 					return;
 				// remove the handler from the multi handle
 				curl_multi_remove_handle(GetMultiHandle(), GetEasyHandle());
-				m_handler(ec, e);
+				m_handler(ec);
 				SetHandled(true);
 			}
 		private:
@@ -130,7 +129,8 @@ namespace cma
 		/// the completion token either on error or success. This can be called
 		/// from multiple threads at once. Once the operation is initiated,
 		/// it is the responsibility of the caller to ensure that the easy handle
-		/// stays in scope until the handler is called.
+		/// stays in scope until the handler is called. The completon token
+		/// signature is void(error_code)
 		/// @tparam CompletionToken The completion token type
 		/// @param easyHandle The easy handle to perform the action on
 		/// @param token The completion token
@@ -157,14 +157,13 @@ namespace cma
 					// track the socket and initiate the transfer. if this fails
 					if (auto res = curl_multi_add_handle(GetNativeHandle(),
 						easy.GetNativeHandle()); res != CURLM_OK)
-						return performHandler->Complete(asio::error_code{}, res);
+						return performHandler->Complete(res);
 					// track the handler
 					m_easyHandlerMap.emplace(easy.GetNativeHandle(), std::move(performHandler));
 				}));
 			};
 			return asio::async_initiate<CompletionToken,
-				void(asio::error_code, Error)>(
-					initiation, token, std::ref(easyHandle));
+				void(error_code)>(initiation, token, std::ref(easyHandle));
 		}
 		/// @brief Cancels all outstanding asynchronous operations,
 		/// and calls handlers with asio::error::operation_aborted.
@@ -190,7 +189,7 @@ namespace cma
 		/// @param val The value
 		/// @return The resulting error
 		template<typename T>
-		inline Error SetOption(CURLMoption option, T&& val) noexcept
+		inline error_code SetOption(CURLMoption option, T&& val) noexcept
 		{
 			// weird GCC bug where forward thinks its return value is ignored
 			return curl_multi_setopt(GetNativeHandle(), option, static_cast<T&&>(val));

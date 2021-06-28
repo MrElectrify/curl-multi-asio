@@ -6,47 +6,58 @@
 /// 6/21/21 23:10
 
 // curl-multi-asio includes
-#include <curl-multi-asio/Common.h>
+#include <curl-multi-asio/Detail/ErrorCategory.h>
 
 // STL includes
 #include <string_view>
-#include <variant>
+
+// register the error codes
+#ifdef CMA_USE_BOOST
+namespace boost
+{
+	namespace system
+	{
+#else
+namespace std
+{
+#endif
+	template<>
+	struct is_error_code_enum<CURLcode> : std::true_type {};
+	template<>
+	struct is_error_code_enum<CURLMcode> : std::true_type {};
+#ifdef CMA_USE_BOOST
+	}
+}
+#else
+}
+#endif // 
 
 namespace cma
 {
-	/// @brief Error is a wrapper around CURLcode/CURLMcode. It provides
-	/// facilities for lazily getting string and value errors
-	class Error
-	{
-	public:
-		Error() = default;
-		Error(CURLcode code) noexcept : m_code(code) {}
-		Error(CURLMcode code) noexcept : m_code(code) {}
+#ifdef CMA_USE_BOOST
+	using error_code = boost::system::error_code;
+#else
+	using error_code = asio::error_code;
+#endif
+}
 
-		/// @return The contained CURLcode, or OK
-		inline CURLcode GetCURLcode() const noexcept { return (m_code.index() == 0) ? std::get<0>(m_code) : CURLE_OK; }
-		/// @return The contained CURLMcode, or OK
-		inline CURLMcode GetCURLMcode() const noexcept { return (m_code.index() == 1) ? std::get<1>(m_code) : CURLM_OK; }
-		/// @return The raw code of the error
-		inline auto GetValue() const noexcept { return m_code; }
-		/// @return The string representation of the error
-		inline std::string_view ToString() const noexcept 
-		{ 
-			return (m_code.index() == 0) ?
-				curl_easy_strerror(std::get<0>(m_code)) :
-				curl_multi_strerror(std::get<1>(m_code)); 
-		}
-
-		inline bool operator==(CURLcode code) const noexcept { return m_code.index() == 0 && std::get<0>(m_code) == code; }
-		inline operator bool() const noexcept 
-		{ 
-			return (m_code.index() == 0) ? 
-				std::get<0>(m_code) != CURLcode::CURLE_OK :
-				std::get<1>(m_code) != CURLMcode::CURLM_OK;
-		}
-	private:
-		std::variant<CURLcode, CURLMcode> m_code = CURLcode::CURLE_OK;
-	};
+/// @brief Makes an error code from a CURLcode
+/// @param code The CURLcode
+/// @return The error code
+inline cma::error_code make_error_code(CURLcode code) noexcept
+{
+	if (code == CURLcode::CURLE_OK)
+		return {};
+	return { static_cast<int>(code), cma::Detail::CURLcodeErrCategory::Instance() };
+}
+/// @brief Makes an error code from a CURLMcode
+/// @param code The CURLcode
+/// @return The error code
+inline cma::error_code make_error_code(CURLMcode code) noexcept
+{
+	if (code == CURLMcode::CURLM_OK)
+		return {};
+	return { static_cast<int>(code), cma::Detail::CURLMcodeErrCategory::Instance() };
 }
 
 #endif

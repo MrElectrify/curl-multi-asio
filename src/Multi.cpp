@@ -25,7 +25,7 @@ size_t Multi::Cancel(asio::error_code& ec, CURLMcode error) noexcept
 		{
 			// call each handler with asio::error::operation_aborted
 			for (const auto& handler : m_easyHandlerMap)
-				handler.second->Complete(asio::error::operation_aborted, error);
+				handler.second->Complete(asio::error::operation_aborted);
 			// clear the map and free handler data
 			m_easyHandlerMap.clear();
 		}));
@@ -43,7 +43,7 @@ bool Multi::Cancel(const Easy& easy, CURLMcode error) noexcept
 		[this, handlerIt, error]()
 		{
 			// call the handler now
-			handlerIt->second->Complete(asio::error::operation_aborted, error);
+			handlerIt->second->Complete(asio::error::operation_aborted);
 			// delete the handler
 			m_easyHandlerMap.erase(handlerIt);
 			// if there are no more operations, there is no need for a timer
@@ -162,7 +162,7 @@ void Multi::CheckTransfers() noexcept
 			continue;
 		// a descriptor is done. call its handler
 		m_easyHandlerMap.at(msg->easy_handle)->Complete(
-			asio::error_code{}, msg->data.result);
+			msg->data.result);
 		// remove it from the handler map. the deleter
 		// will also remove the handle from multi
 		m_easyHandlerMap.erase(msg->easy_handle);
