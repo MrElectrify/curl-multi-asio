@@ -14,8 +14,10 @@
 #include <tl/expected.hpp>
 
 // STL includes
+#include <initializer_list>
 #include <memory>
 #include <ostream>
+#include <span>
 #include <utility>
 
 /// @brief This concept detects any type, such as std::string,
@@ -39,6 +41,11 @@ namespace cma
 	class Easy
 	{
 	public:
+		struct Header
+		{
+			std::string_view key;
+			std::string_view value;
+		};
 		struct DefaultBuffer {};
 		struct NullBuffer {};
 
@@ -72,10 +79,10 @@ namespace cma
 		}
 
 		/// @brief Adds a header to the request
-		/// @param header The header string
+		/// @param headerStr The header string
 		/// @return The success of the operation
-		bool AddHeader(std::string_view header) noexcept;
-		/// @brief Adds a header to the request
+		bool AddHeaderStr(std::string_view headerStr) noexcept;
+		/// @brief Adds a header k/v pair to the request
 		/// @param header The header key and value
 		/// @return The success of the operation
 		bool AddHeader(std::pair<std::string_view, std::string_view> header) noexcept;
@@ -138,13 +145,25 @@ namespace cma
 			// weird GCC bug where forward thinks its return value is ignored
 			return curl_easy_setopt(GetNativeHandle(), option, static_cast<T&&>(value));
 		}
-		/// @brief Sets the URL to traverse to
+		/// @brief Sets the URL to traverse
 		/// @param url The URL
 		/// @return The resulting error
 		inline error_code SetURL(std::string_view url) noexcept
 		{
 			return SetOption(CURLoption::CURLOPT_URL, url.data());
 		}
+		/// @brief Sets the URL to traverse, with urlencoded parameters
+		/// @param url The URL
+		/// @param urlEncodedParams The URLencoded parameters
+		/// @return The resulting error
+		error_code SetURL(std::string_view url,std::span<
+			std::pair<std::string_view, std::string_view>> urlEncodedParams) noexcept;
+		/// @brief Sets the URL to traverse, with urlencoded parameters
+		/// @param url The URL
+		/// @param urlEncodedParams The URLencoded parameters
+		/// @return The resulting error
+		error_code SetURL(std::string_view url, std::initializer_list<
+			std::pair<std::string_view, std::string_view>> urlEncodedParams) noexcept;
 
 		/// @return Whether or not the handle is valid
 		inline operator bool() const noexcept { return m_nativeHandle != nullptr; }

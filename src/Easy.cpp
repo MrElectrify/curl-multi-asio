@@ -14,7 +14,7 @@ Easy::Easy(const Easy& other) noexcept :
 	// add each header manually
 	for (auto node = other.m_headerList.get(); node != nullptr;
 		node = node->next)
-		AddHeader(node->data);
+		AddHeaderStr(node->data);
 }
 
 Easy& Easy::operator=(const Easy& other) noexcept
@@ -25,15 +25,18 @@ Easy& Easy::operator=(const Easy& other) noexcept
 	return *this;
 }
 
-bool Easy::AddHeader(std::string_view header) noexcept
+bool Easy::AddHeaderStr(std::string_view headerStr) noexcept
 {
 	// add the header to the list
-	const auto result = curl_slist_append(m_headerList.get(), header.data());
+	const auto result = curl_slist_append(m_headerList.get(), headerStr.data());
 	if (result == nullptr)
 		return false;
 	// release the unique_ptr so we don't destroy it
 	m_headerList.release();
 	m_headerList.reset(result);
+	if (const auto res = SetOption(CURLoption::CURLOPT_HTTPHEADER,
+		m_headerList.get()); res)
+		return false;
 	return true;
 }
 
@@ -42,7 +45,7 @@ bool Easy::AddHeader(std::pair<std::string_view, std::string_view> header) noexc
 	std::string headerStr(header.first.data(), header.first.size());
 	headerStr += ": ";
 	headerStr += header.second;
-	return AddHeader(headerStr);
+	return AddHeaderStr(headerStr);
 }
 
 cma::error_code Easy::SetBuffer(DefaultBuffer) noexcept
@@ -57,4 +60,46 @@ cma::error_code Easy::SetBuffer(NullBuffer) noexcept
 		Easy::WriteCb<NullBuffer>); res)
 		return res;
 	return SetOption(CURLoption::CURLOPT_WRITEDATA, &s_nb);
+}
+
+cma::error_code Easy::SetURL(std::string_view url,
+	std::span<std::pair<std::string_view, std::string_view>> urlEncodedParams) noexcept
+{
+	std::string finalURL(url.data(), url.size());
+	bool first = true;
+	for (const auto& param : urlEncodedParams)
+	{
+		if (first == true)
+		{
+			finalURL += '?';
+			first = false;
+		}
+		else
+			finalURL += '&';
+		finalURL += param.first;
+		finalURL += '=';
+		finalURL += param.second;
+	}
+	return SetURL(finalURL);
+}
+
+cma::error_code Easy::SetURL(std::string_view url,
+	std::initializer_list<std::pair<std::string_view, std::string_view>> urlEncodedParams) noexcept
+{
+	std::string finalURL(url.data(), url.size());
+	bool first = true;
+	for (const auto& param : urlEncodedParams)
+	{
+		if (first == true)
+		{
+			finalURL += '?';
+			first = false;
+		}
+		else
+			finalURL += '&';
+		finalURL += param.first;
+		finalURL += '=';
+		finalURL += param.second;
+	}
+	return SetURL(finalURL);
 }
