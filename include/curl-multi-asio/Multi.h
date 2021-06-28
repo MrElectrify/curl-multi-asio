@@ -232,7 +232,7 @@ namespace cma
 		Detail::Lifetime s_lifetime;
 #endif
 		// when the handlers are destructed, their curl handle must be untracked
-		std::unordered_map<CURL*, std::shared_ptr<PerformHandlerBase>> m_easyHandlerMap;
+		std::unordered_map<CURL*, std::unique_ptr<PerformHandlerBase>> m_easyHandlerMap;
 		std::unordered_map<curl_socket_t, asio::ip::tcp::socket> m_easySocketMap;
 		asio::system_timer m_timer;
 		asio::strand<asio::any_io_executor> m_strand;

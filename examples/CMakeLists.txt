@@ -27,3 +27,8 @@ add_executable(Example6 Example6.cpp)
 
 target_link_libraries(Example6
 	PUBLIC curl-multi-asio)
+
+add_executable(Example7 Example7.cpp)
+
+target_link_libraries(Example7
+	PUBLIC curl-multi-asio)
