@@ -35,8 +35,8 @@ namespace cma
 		class PerformHandlerBase
 		{
 		public:
-			PerformHandlerBase(CURL* easyHandle) noexcept :
-				m_easyHandle(easyHandle) {}
+			PerformHandlerBase(CURL* easyHandle, CURLM* multiHandle) noexcept :
+				m_easyHandle(easyHandle), m_multiHandle(multiHandle) {}
 			virtual ~PerformHandlerBase() = default;
 
 			/// @brief Completes the perform, and calls the handler. Must
@@ -47,6 +47,8 @@ namespace cma
 
 			/// @return The underlying easy handle
 			inline CURL* GetEasyHandle() const noexcept { return m_easyHandle; }
+			/// @return The underlying multi handle
+			inline CURLM* GetMultiHandle() const noexcept { return m_multiHandle; }
 			/// @return If the handler was considered handled
 			inline bool Handled() const noexcept { return m_handled; }
 		protected:
@@ -54,14 +56,15 @@ namespace cma
 			inline void SetHandled(bool handled) noexcept { m_handled = handled; }
 		private:
 			CURL* m_easyHandle;
+			CURL* m_multiHandle;
 			bool m_handled = false;
 		};
 		template<typename Handler>
 		class PerformHandler : public PerformHandlerBase
 		{
 		public:
-			PerformHandler(CURL* easyHandle, Handler& handler) noexcept : 
-				PerformHandlerBase(easyHandle), m_handler(std::move(handler)) {}
+			PerformHandler(CURL* easyHandle, CURLM* multiHandle, Handler& handler) noexcept :
+				PerformHandlerBase(easyHandle, multiHandle), m_handler(std::move(handler)) {}
 			~PerformHandler() noexcept
 			{
 				// abort if we haven't been handled
@@ -72,8 +75,10 @@ namespace cma
 
 			void Complete(asio::error_code ec, Error e) noexcept
 			{
-				// we can call this directly now that it will
-				// only be under the strand
+				if (Handled() == true)
+					return;
+				// remove the handler from the multi handle
+				curl_multi_remove_handle(GetMultiHandle(), GetEasyHandle());
 				m_handler(ec, e);
 				SetHandled(true);
 			}
@@ -138,29 +143,28 @@ namespace cma
 				// do this in a strand so that curl can't be accessed concurrently
 				asio::post(m_executor, asio::bind_executor(m_strand,
 					[this, handler = std::move(handler), &easy]() mutable
-					{
-						// set the open and close socket functions. this allows
-						// us to make them asio sockets for async functionality
-						easy.SetOption(CURLoption::CURLOPT_OPENSOCKETFUNCTION, &Multi::OpenSocketCb);
-						easy.SetOption(CURLoption::CURLOPT_OPENSOCKETDATA, this);
-						easy.SetOption(CURLoption::CURLOPT_CLOSESOCKETFUNCTION, &Multi::CloseSocketCb);
-						easy.SetOption(CURLoption::CURLOPT_CLOSESOCKETDATA, this);
-						// store the handler
-						std::shared_ptr<PerformHandlerBase> performHandler(
-							new PerformHandler<typename std::decay_t<decltype(handler)>>(
-								easy.GetNativeHandle(), handler), std::bind(&Multi::FreeHandler, 
-									this, std::placeholders::_1));
-						// track the socket and initiate the transfer. if this fails
-						if (auto res = curl_multi_add_handle(GetNativeHandle(),
-							easy.GetNativeHandle()); res != CURLM_OK)
-							return performHandler->Complete(asio::error_code{}, res);
-						// track the handler
-						m_easyHandlerMap.emplace(easy.GetNativeHandle(), std::move(performHandler));
-					}));
+				{
+					// set the open and close socket functions. this allows
+					// us to make them asio sockets for async functionality
+					easy.SetOption(CURLoption::CURLOPT_OPENSOCKETFUNCTION, &Multi::OpenSocketCb);
+					easy.SetOption(CURLoption::CURLOPT_OPENSOCKETDATA, this);
+					easy.SetOption(CURLoption::CURLOPT_CLOSESOCKETFUNCTION, &Multi::CloseSocketCb);
+					easy.SetOption(CURLoption::CURLOPT_CLOSESOCKETDATA, this);
+					// store the handler
+					auto performHandler = std::make_unique<PerformHandler<
+						typename std::decay_t<decltype(handler)>>>(
+							easy.GetNativeHandle(), GetNativeHandle(), handler);
+					// track the socket and initiate the transfer. if this fails
+					if (auto res = curl_multi_add_handle(GetNativeHandle(),
+						easy.GetNativeHandle()); res != CURLM_OK)
+						return performHandler->Complete(asio::error_code{}, res);
+					// track the handler
+					m_easyHandlerMap.emplace(easy.GetNativeHandle(), std::move(performHandler));
+				}));
 			};
-			return asio::async_initiate<CompletionToken, 
+			return asio::async_initiate<CompletionToken,
 				void(asio::error_code, Error)>(
-				initiation, token, std::ref(easyHandle));
+					initiation, token, std::ref(easyHandle));
 		}
 		/// @brief Cancels all outstanding asynchronous operations,
 		/// and calls handlers with asio::error::operation_aborted.
@@ -169,7 +173,7 @@ namespace cma
 		/// @param ec The error code output
 		/// @param error The error to send to all open handlers
 		/// @return The number of asynchronous operations canceled
-		size_t Cancel(asio::error_code& ec, 
+		size_t Cancel(asio::error_code& ec,
 			CURLMcode error = CURLMcode::CURLM_OK) noexcept;
 		/// @brief Cancels the outstanding asynchronous operation,
 		/// and calls the handler with asio::error::operation_aborted.
@@ -223,14 +227,6 @@ namespace cma
 		/// @param what The type of event
 		void EventCallback(const asio::error_code& ec, curl_socket_t s,
 			int what, int* last) noexcept;
-		/// @brief Untracks and frees a handler
-		/// @param handler The handler to untrack
-		inline void FreeHandler(PerformHandlerBase* handler) noexcept
-		{
-			curl_multi_remove_handle(GetNativeHandle(), handler->GetEasyHandle());
-			// actually free the handler too
-			std::default_delete<PerformHandlerBase>()(handler);
-		}
 		asio::any_io_executor m_executor;
 #ifdef CMA_MANAGE_CURL
 		Detail::Lifetime s_lifetime;
