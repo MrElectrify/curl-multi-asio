@@ -127,11 +127,11 @@ namespace cma
 		/// it is the responsibility of the caller to ensure that the easy handle
 		/// stays in scope until the handler is called.
 		/// @tparam CompletionToken The completion token type
-		/// @param easy The easy handle to perform the action on
+		/// @param easyHandle The easy handle to perform the action on
 		/// @param token The completion token
 		/// @return DEDUCED
 		template<typename CompletionToken>
-		auto AsyncPerform(Easy& easy, CompletionToken&& token)
+		auto AsyncPerform(Easy& easyHandle, CompletionToken&& token)
 		{
 			auto initiation = [this](auto&& handler, Easy& easy)
 			{
@@ -160,7 +160,7 @@ namespace cma
 			};
 			return asio::async_initiate<CompletionToken, 
 				void(asio::error_code, Error)>(
-				initiation, token, std::ref(easy));
+				initiation, token, std::ref(easyHandle));
 		}
 		/// @brief Cancels all outstanding asynchronous operations,
 		/// and calls handlers with asio::error::operation_aborted.
