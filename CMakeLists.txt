@@ -19,6 +19,11 @@ option(CMA_CURL_GZIP "cURL uses gzip and needs gzip to be linked" OFF)
 option(CMA_MANAGE_CURL "The program is only using curl-multi-asio for cURL. It will manage cURL's global state" ON)
 set(CMA_ASIO_INCLUDE_DIR "" CACHE FILEPATH "asio Include directory. If there is already an asio target, this is ignored")
 
+if ((NOT TARGET asio) AND
+	CMA_ASIO_INCLUDE_DIR STREQUAL "")
+	message(FATAL_ERROR "asio must be provided as a target or in CMA_ASIO_INCLUDE_DIR")
+endif()
+
 # if an asio target has not been defined, define one
 if (NOT TARGET asio)
 	add_library(asio INTERFACE)
