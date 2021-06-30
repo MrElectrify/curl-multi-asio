@@ -29,6 +29,13 @@ concept AcceptsCharacters = requires(T a)
 	{ a.resize(std::declval<size_t>()) };
 	{ a.size() } -> std::same_as<size_t>;
 };
+/// @brief An iterator to std::pair<std::string_view, std::string_view>
+template<typename T>
+concept DataIterator = requires(T a)
+{
+	++a;
+	{ *a } -> std::convertible_to<const std::pair<std::string_view, std::string_view>&>;
+};
 /// @brief This concept detects whether or not a type is an ostream.
 template<typename T>
 concept IsOstream = std::is_base_of_v<std::ostream, T>;
@@ -145,29 +152,106 @@ namespace cma
 			// weird GCC bug where forward thinks its return value is ignored
 			return curl_easy_setopt(GetNativeHandle(), option, static_cast<T&&>(value));
 		}
+		/// @brief Sets post data to the data, and sets method to POST. 
+		/// Per cURL docs, it also sets the data type in the header to
+		/// url-encoded. So if you use this, make sure you set the header
+		/// to whatever data type you are sending
+		/// @param postData The raw data
+		/// @return The resulting error code
+		template<typename Str>
+		error_code SetPOSTData(Str&& postData) noexcept
+		{
+			// set the method to POST
+			if (const auto res = SetOption(CURLoption::CURLOPT_POST, 1L); res)
+				return res;
+			// set the POST data
+			m_postData = std::forward<Str>(postData);
+			// and set the field + size
+			if (const auto res = SetOption(CURLoption::CURLOPT_POSTFIELDSIZE,
+				m_postData.size()); res)
+				return res;
+			return SetOption(CURLoption::CURLOPT_POSTFIELDS, m_postData.c_str());
+		}
+		/// @brief Sets post data to the url-encoded data, and sets
+		/// the method to POST
+		/// @param urlEncodedData The url-encoded data
+		/// @return The resulting error code
+		inline error_code SetPOSTData(std::span<std::pair<std::string_view,
+			std::string_view>> urlEncodedData) noexcept
+		{
+			return SetPOSTData(URLEncode(urlEncodedData.begin(), urlEncodedData.end()));
+		}
+		/// @brief Sets post data to the url-encoded data, and sets
+		/// the method to POST
+		/// @param urlEncodedData The url-encoded data
+		/// @return The resulting error code
+		inline error_code SetPOSTData(std::initializer_list<std::pair<
+			std::string_view, std::string_view>> urlEncodedData) noexcept
+		{
+			return SetPOSTData(URLEncode(urlEncodedData.begin(), urlEncodedData.end()));
+		}
+		/// @brief Erases the POST data and reverts back to the previous
+		/// REST method
+		/// @return The resulting error code
+		inline error_code SetPOSTData(NullBuffer) noexcept
+		{
+			// just disable post
+			return SetOption(CURLoption::CURLOPT_POST, 0L);
+		}
 		/// @brief Sets the URL to traverse
 		/// @param url The URL
 		/// @return The resulting error
-		inline error_code SetURL(std::string_view url) noexcept
+		inline error_code SetURL(const char* url) noexcept
 		{
-			return SetOption(CURLoption::CURLOPT_URL, url.data());
+			return SetOption(CURLoption::CURLOPT_URL, url);
 		}
 		/// @brief Sets the URL to traverse, with urlencoded parameters
+		/// @tparam Str The string type
 		/// @param url The URL
 		/// @param urlEncodedParams The URLencoded parameters
 		/// @return The resulting error
-		error_code SetURL(std::string_view url,std::span<
-			std::pair<std::string_view, std::string_view>> urlEncodedParams) noexcept;
+		template<typename Str>
+		inline error_code SetURL(Str&& url, std::span<
+			std::pair<std::string_view, std::string_view>> urlEncodedParams) noexcept
+		{
+			return SetURL((std::string(url) + '?' + URLEncode(
+				urlEncodedParams.begin(), urlEncodedParams.end())).c_str());
+		}
 		/// @brief Sets the URL to traverse, with urlencoded parameters
+		/// @tparam Str The string type
 		/// @param url The URL
 		/// @param urlEncodedParams The URLencoded parameters
 		/// @return The resulting error
-		error_code SetURL(std::string_view url, std::initializer_list<
-			std::pair<std::string_view, std::string_view>> urlEncodedParams) noexcept;
+		template<typename Str>
+		inline error_code SetURL(Str&& url, std::initializer_list<
+			std::pair<std::string_view, std::string_view>> urlEncodedParams) noexcept
+		{
+			return SetURL((std::string(url) + '?' + URLEncode(
+				urlEncodedParams.begin(), urlEncodedParams.end())).c_str());
+		}
 
 		/// @return Whether or not the handle is valid
 		inline operator bool() const noexcept { return m_nativeHandle != nullptr; }
 	private:
+		/// @brief URL-encodes key-value pairs
+		/// @param begin The starting iterator of the data
+		/// @param end The ending iterator of the data
+		/// @return The URL-encoded string
+		template<DataIterator It>
+		static std::string URLEncode(It begin, It end)
+		{
+			std::string result;
+			for (It it = begin; it != end; ++it)
+			{
+				if (it != begin)
+					result += '&';
+				result += (*it).first;
+				result += '=';
+				result += (*it).second;
+			}
+			return result;
+		}
+
 		/// @brief The write callback for ostreams. For a
 		/// description of each argument, check cURL docs for
 		/// CURLOPT_WRITEFUNCTION
@@ -206,6 +290,7 @@ namespace cma
 #endif
 		std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> m_nativeHandle;
 		std::unique_ptr<curl_slist, decltype(&curl_slist_free_all)> m_headerList;
+		std::string m_postData;
 	};
 }
 
