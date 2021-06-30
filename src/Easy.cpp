@@ -25,10 +25,10 @@ Easy& Easy::operator=(const Easy& other) noexcept
 	return *this;
 }
 
-bool Easy::AddHeaderStr(std::string_view headerStr) noexcept
+bool Easy::AddHeaderStr(const char* headerStr) noexcept
 {
 	// add the header to the list
-	const auto result = curl_slist_append(m_headerList.get(), headerStr.data());
+	const auto result = curl_slist_append(m_headerList.get(), headerStr);
 	if (result == nullptr)
 		return false;
 	// release the unique_ptr so we don't destroy it
@@ -45,7 +45,7 @@ bool Easy::AddHeader(std::pair<std::string_view, std::string_view> header) noexc
 	std::string headerStr(header.first.data(), header.first.size());
 	headerStr += ": ";
 	headerStr += header.second;
-	return AddHeaderStr(headerStr);
+	return AddHeaderStr(headerStr.c_str());
 }
 
 cma::error_code Easy::SetBuffer(DefaultBuffer) noexcept

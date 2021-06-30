@@ -1,5 +1,5 @@
 /*
- *	Example1 shows a simple synchronous GET call
+ *	Example8 shows a simple synchronous GET call
  *	with custom headers and urlencoded data
  */
 

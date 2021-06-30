@@ -1,5 +1,5 @@
 /*
- *	Example4 shows a simple asynchronous GET call
+ *	Example7 shows a simple asynchronous GET call
  *	to www.example.com, followd by a sequential
  *	asynchronous GET call to www.google.com
  */

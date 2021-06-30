@@ -88,7 +88,7 @@ namespace cma
 		/// @brief Adds a header to the request
 		/// @param headerStr The header string
 		/// @return The success of the operation
-		bool AddHeaderStr(std::string_view headerStr) noexcept;
+		bool AddHeaderStr(const char* headerStr) noexcept;
 		/// @brief Adds a header k/v pair to the request
 		/// @param header The header key and value
 		/// @return The success of the operation

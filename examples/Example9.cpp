@@ -1,6 +1,6 @@
 /*
- *	Example1 shows a simple synchronous GET call
- *	with custom headers and urlencoded data
+ *	Example9 shows a simple synchronous POST call
+ *	with custom headers and urlencoded parameters and data
  */
 
 #include <curl-multi-asio/Easy.h>
