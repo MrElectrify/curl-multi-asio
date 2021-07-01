@@ -119,6 +119,8 @@ namespace cma
 		/// @return This multi handle
 		Multi& operator=(Multi&& other) = default;
 
+		/// @return The associated executor
+		inline asio::any_io_executor& GetExecutor() noexcept { return m_executor; }
 		/// @return The native handle
 		inline CURLM* GetNativeHandle() const noexcept { return m_nativeHandle.get(); }
 
