@@ -18,16 +18,22 @@ Multi::Multi(const asio::any_io_executor& executor) noexcept
 
 size_t Multi::Cancel(asio::error_code& ec, CURLMcode error) noexcept
 {
-	// if there are no operations, there is no need for a timer
+	// if there are no operations, there is no need for a timer.
 	m_timer.cancel(ec);
 	asio::post(m_executor, asio::bind_executor(m_strand,
 		[this, error] 
 		{
 			// call each handler with asio::error::operation_aborted
-			for (const auto& handler : m_easyHandlerMap)
-				handler.second->Complete(asio::error::operation_aborted);
-			// clear the map and free handler data
-			m_easyHandlerMap.clear();
+			for (auto it = m_easyHandlerMap.begin();
+				it != m_easyHandlerMap.end();)
+			{
+				// move the handler out in case it cancels itself.
+				auto handler = std::move(it->second);
+				// delete the handler
+				it = m_easyHandlerMap.erase(it);
+				// call the handler
+				handler->Complete(error);
+			}
 		}));
 	return m_easyHandlerMap.size();
 }
@@ -42,10 +48,11 @@ bool Multi::Cancel(const Easy& easy, CURLMcode error) noexcept
 	asio::post(m_executor, asio::bind_executor(m_strand,
 		[this, handlerIt, error]()
 		{
-			// call the handler now
-			handlerIt->second->Complete(asio::error::operation_aborted);
+			auto handler = std::move(handlerIt->second);
 			// delete the handler
 			m_easyHandlerMap.erase(handlerIt);
+			// call the handler now
+			handler->Complete(asio::error::operation_aborted);
 			// if there are no more operations, there is no need for a timer
 			if (m_easyHandlerMap.empty() == true)
 			{
@@ -160,12 +167,17 @@ void Multi::CheckTransfers() noexcept
 		// only pay attention to finished transfers
 		if (msg->msg != CURLMSG::CURLMSG_DONE)
 			continue;
-		// a descriptor is done. call its handler
-		m_easyHandlerMap.at(msg->easy_handle)->Complete(
-			msg->data.result);
+		auto handlerIt = m_easyHandlerMap.find(msg->easy_handle);
+		if (handlerIt == m_easyHandlerMap.end())
+			continue;
+		// move the handler out and erase it in case 
+		// it tries to cancel itself
+		auto handler = std::move(handlerIt->second);
 		// remove it from the handler map. the deleter
 		// will also remove the handle from multi
-		m_easyHandlerMap.erase(msg->easy_handle);
+		m_easyHandlerMap.erase(handlerIt);
+		// a descriptor is done. call its handler
+		handler->Complete(msg->data.result);
 	}
 }
 
