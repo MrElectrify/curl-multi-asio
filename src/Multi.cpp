@@ -1,6 +1,7 @@
 #include <curl-multi-asio/Multi.h>
 
 #include <chrono>
+#include <functional>
 
 using cma::Multi;
 
@@ -20,21 +21,15 @@ size_t Multi::Cancel(asio::error_code& ec, CURLMcode error) noexcept
 {
 	// if there are no operations, there is no need for a timer.
 	m_timer.cancel(ec);
-	asio::post(m_executor, asio::bind_executor(m_strand,
-		[this, error] 
-		{
-			// call each handler with asio::error::operation_aborted
-			for (auto it = m_easyHandlerMap.begin();
-				it != m_easyHandlerMap.end();)
+	for (auto& handler : m_easyHandlerMap)
+	{
+		// post each completion in case the handler tries to cancel itself
+		asio::post(m_executor, [handler = std::move(handler.second)]
 			{
-				// move the handler out in case it cancels itself.
-				auto handler = std::move(it->second);
-				// delete the handler
-				it = m_easyHandlerMap.erase(it);
-				// call the handler
-				handler->Complete(error);
-			}
-		}));
+				handler->Complete(asio::error::operation_aborted);
+			});
+	}
+	m_easyHandlerMap.clear();
 	return m_easyHandlerMap.size();
 }
 
@@ -44,22 +39,19 @@ bool Multi::Cancel(const Easy& easy, CURLMcode error) noexcept
 	auto handlerIt = m_easyHandlerMap.find(easy.GetNativeHandle());
 	if (handlerIt == m_easyHandlerMap.end())
 		return false;
-	// post completion under the strand
-	asio::post(m_executor, asio::bind_executor(m_strand,
-		[this, handlerIt, error]()
+	// post each completion in case the handler tries to cancel itself
+	asio::post(m_executor, [handler = std::move(handlerIt->second)]
 		{
-			auto handler = std::move(handlerIt->second);
-			// delete the handler
-			m_easyHandlerMap.erase(handlerIt);
-			// call the handler now
 			handler->Complete(asio::error::operation_aborted);
-			// if there are no more operations, there is no need for a timer
-			if (m_easyHandlerMap.empty() == true)
-			{
-				asio::error_code ignored;
-				m_timer.cancel(ignored);
-			}
-		}));
+		});
+	// delete the handler
+	m_easyHandlerMap.erase(handlerIt);
+	// if there are no more operations, there is no need for a timer
+	if (m_easyHandlerMap.empty() == true)
+	{
+		asio::error_code ignored;
+		m_timer.cancel(ignored);
+	}
 	return true;
 }
 
