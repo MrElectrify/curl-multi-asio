@@ -72,7 +72,7 @@ namespace cma
 					Complete(asio::error::operation_aborted);
 			}
 
-			void Complete(asio::error_code ec) noexcept
+			void Complete(cma::error_code ec) noexcept
 			{
 				if (Handled() == true)
 					return;
@@ -107,7 +107,7 @@ namespace cma
 		/// @brief Cancels any outstanding operations, and destroys handles.
 		/// If CMA_MANAGE_CURL is specified when the library is built and
 		/// this is the only instance of Multi, curl_global_cleanup will be called
-		~Multi() noexcept { asio::error_code ignored; Cancel(ignored); }
+		~Multi() noexcept { cma::error_code ignored; Cancel(ignored); }
 		// we don't allow copies, because multi handles can't be duplicated.
 		// there's not even a reason to do so, multi handles don't really hold
 		// much of a state themselves besides stuff that shouldn't be duplicated
@@ -174,7 +174,7 @@ namespace cma
 		/// @param ec The error code output
 		/// @param error The error to send to all open handlers
 		/// @return The number of asynchronous operations canceled
-		size_t Cancel(asio::error_code& ec,
+		size_t Cancel(cma::error_code& ec,
 			CURLMcode error = CURLMcode::CURLM_OK) noexcept;
 		/// @brief Cancels the outstanding asynchronous operation,
 		/// and calls the handler with asio::error::operation_aborted.
@@ -226,7 +226,7 @@ namespace cma
 		/// @param ec The error code
 		/// @param s The socket
 		/// @param what The type of event
-		void EventCallback(const asio::error_code& ec, curl_socket_t s,
+		void EventCallback(const cma::error_code& ec, curl_socket_t s,
 			int what, int* last) noexcept;
 		asio::any_io_executor m_executor;
 #ifdef CMA_MANAGE_CURL

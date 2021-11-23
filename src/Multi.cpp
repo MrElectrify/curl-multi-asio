@@ -17,7 +17,7 @@ Multi::Multi(const asio::any_io_executor& executor) noexcept
 	SetOption(CURLMoption::CURLMOPT_SOCKETDATA, this);
 }
 
-size_t Multi::Cancel(asio::error_code& ec, CURLMcode error) noexcept
+size_t Multi::Cancel(cma::error_code& ec, CURLMcode error) noexcept
 {
 	// if there are no operations, there is no need for a timer.
 	m_timer.cancel(ec);
@@ -49,7 +49,7 @@ bool Multi::Cancel(const Easy& easy, CURLMcode error) noexcept
 	// if there are no more operations, there is no need for a timer
 	if (m_easyHandlerMap.empty() == true)
 	{
-		asio::error_code ignored;
+		cma::error_code ignored;
 		m_timer.cancel(ignored);
 	}
 	return true;
@@ -58,7 +58,7 @@ bool Multi::Cancel(const Easy& easy, CURLMcode error) noexcept
 int Multi::CloseSocketCb(Multi* userp, curl_socket_t item) noexcept
 {
 	auto socketIt = userp->m_easySocketMap.find(item);
-	asio::error_code ec;
+	cma::error_code ec;
 	// move the socket out so it doesn't get stuck if the close fails.
 	// delete the old iterator
 	auto socket = std::move(socketIt->second);
@@ -124,7 +124,7 @@ int Multi::TimerCallback(CURLM* multi, long timeout_ms, Multi* userp) noexcept
 	if (timeout_ms == -1)
 	{
 		// delete the timer, per cURL docs
-		asio::error_code ignored;
+		cma::error_code ignored;
 		userp->m_timer.cancel(ignored);
 	}
 	else
@@ -132,12 +132,12 @@ int Multi::TimerCallback(CURLM* multi, long timeout_ms, Multi* userp) noexcept
 		// start the timer
 		userp->m_timer.expires_from_now(std::chrono::milliseconds(timeout_ms));
 		userp->m_timer.async_wait(asio::bind_executor(
-			userp->m_strand, [userp] (const asio::error_code& ec)
+			userp->m_strand, [userp] (const cma::error_code& ec)
 			{
 				if (ec)
 					return;
 				int still_running = 0;
-				asio::error_code ignored;
+				cma::error_code ignored;
 				if (auto err = curl_multi_socket_action(userp->GetNativeHandle(),
 					CURL_SOCKET_TIMEOUT, 0, &still_running); err != CURLMcode::CURLM_OK)
 				{
@@ -173,7 +173,7 @@ void Multi::CheckTransfers() noexcept
 	}
 }
 
-void Multi::EventCallback(const asio::error_code& ec, curl_socket_t s,
+void Multi::EventCallback(const cma::error_code& ec, curl_socket_t s,
 	int what, int* last) noexcept
 {
 	// make sure it's a socket that hasn't bene closed
@@ -183,7 +183,7 @@ void Multi::EventCallback(const asio::error_code& ec, curl_socket_t s,
 	if (what != *last && *last != CURL_POLL_INOUT)
 		return;
 	int still_running = 0;
-	asio::error_code ignored;
+	cma::error_code ignored;
 	if (ec)
 		what = CURL_CSELECT_ERR;
 	if (auto err = curl_multi_socket_action(GetNativeHandle(), s,
